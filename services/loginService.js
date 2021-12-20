@@ -1,3 +1,4 @@
+const poolCon = require('../db/db')
 const { GET_USER_BY_NAME } = require('../db/query')
 
 const getUser = async (data) => {

@@ -1,8 +1,7 @@
 const joi = require('joi')
 const bcrypt = require('bcrypt')
-const sql = require('../db/query')
 const logger = require('../helpers/winston').logger('login.js')
-const poolCon = require('../db/db')
+
 const {
   sendResponse,
   validationResponse,
@@ -15,11 +14,13 @@ const {
   PASSWORD_NOT_MATCHED,
 } = require('../Utils/constants')
 const { getUser } = require('../services/loginService')
+const { ADD_USER } = require('../db/query')
 
 const login = async (req, res, next) => {
+  console.log('inside controller')
   try {
     const insertSchema = joi.object().keys({
-      userName: joi.string().alphanum().min(3).max(30).required(),
+      username: joi.string().alphanum().min(3).max(30).required(),
       password: joi.string().required(),
     })
     const { err } = insertSchema.validate(req.body, { abortEarly: false })
@@ -27,12 +28,12 @@ const login = async (req, res, next) => {
       const errMsg = validationResponse(err)
       sendResponse(res, 422, { error: errMsg })
     } else {
-      const userData = await getUser([req.body.userName])
+      const userData = await getUser([req.body.username])
       if (userData.rows.length > 0) {
         sendResponse(res, 200, { msg: USER_EXISTS })
       } else {
         const encryptPass = await bcrypt.hash(req.body.password, 10)
-        await executeQuery(sql.addUser, [req.body.userName, encryptPass])
+        await executeQuery(ADD_USER, [req.body.username, encryptPass])
         sendResponse(res, 201, { msg: USER_SUCCESS })
       }
     }
@@ -54,10 +55,12 @@ const verifyLogin = async (req, res, next) => {
       const errMsg = validationResponse(err)
       res.status(422).json({ error: errMsg })
     } else {
-      const userData = await getUser([req.body.userName])
+      console.log(req.body.username)
+      const userData = await getUser([req.body.username])
+      console.log(userData.rows[0])
       const checkPass = await bcrypt.compare(
         req.body.password,
-        userData.rows[0].password
+        userData.rows[0].pass
       )
       if (checkPass) {
         const jwtToken = createJWT(userData.rows[0])
